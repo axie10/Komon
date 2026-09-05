@@ -2,8 +2,8 @@
 pragma solidity ^0.8.35;
 
 /**
- * @title DAO Pot
+ * @title DAO
  * @author Axie
  * @dev Application for mange different spends of a group
  */
-contract Bote {}
+contract KomonFactory {}
