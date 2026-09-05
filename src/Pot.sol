@@ -63,6 +63,7 @@ contract Pot is ReentrancyGuard {
     uint256 public immutable contributionAmount;
     uint256 public immutable deadline;
     string public name;
+    uint256 public refundPerMember;
 
     // --- Membership ---
     address[] public members;
@@ -156,7 +157,14 @@ contract Pot is ReentrancyGuard {
      * @param _amount       Contribution amount per member
      * @param _deadline     Timestamp — contributions must be in before this
      */
-    constructor(string memory _name, address _token, address[] memory _members, uint256 _amount, uint256 _deadline) {
+    constructor(
+        string memory _name,
+        address _token,
+        address[] memory _members,
+        uint256 _amount,
+        uint256 _deadline,
+        address _creator
+    ) {
         require(_members.length >= 2, "Pot: need at least 2 members");
         require(_amount > 0, "Pot: amount must be greater than 0");
         require(_deadline > block.timestamp, "Pot: deadline must be in the future");
@@ -166,6 +174,7 @@ contract Pot is ReentrancyGuard {
         token = IERC20(_token);
         contributionAmount = _amount;
         deadline = _deadline;
+        creator = _creator;
         state = PotState.FUNDING;
 
         for (uint256 i = 0; i < _members.length; i++) {
@@ -342,6 +351,7 @@ contract Pot is ReentrancyGuard {
         emit EmergencyExitVote(msg.sender);
 
         if (_hasReachedQuorum(emergencyVotes)) {
+            refundPerMember = totalFunds / members.length;
             state = PotState.CLOSED;
             emit EmergencyExitTriggered();
         }
@@ -354,6 +364,7 @@ contract Pot is ReentrancyGuard {
     function closePot() external inState(PotState.ACTIVE) {
         require(msg.sender == creator, "Pot: only creator can close");
 
+        refundPerMember = totalFunds / members.length;
         state = PotState.CLOSED;
         emit PotClosed();
     }
@@ -372,12 +383,10 @@ contract Pot is ReentrancyGuard {
         uint256 refundAmount;
 
         if (state == PotState.CANCELLED) {
-            // Cancelled — return exactly what they put in (if anything)
             if (!hasContributed[msg.sender]) revert IncorrectAmount();
             refundAmount = contributionAmount;
         } else {
-            // Closed — split remaining funds equally among ALL members
-            refundAmount = totalFunds / members.length;
+            refundAmount = refundPerMember;
         }
 
         if (refundAmount == 0) revert InsufficientFunds();
