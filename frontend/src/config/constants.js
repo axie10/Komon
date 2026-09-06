@@ -75,3 +75,24 @@ export function shortenAddress(address) {
   if (!address) return "";
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
+
+export function formatETH(value) {
+  const num = parseFloat(formatEtherRaw(value));
+  if (num === 0) return "0";
+  if (num >= 1) return num.toFixed(4).replace(/\.?0+$/, "");
+  // For small amounts, show up to 6 decimals
+  return num.toFixed(6).replace(/\.?0+$/, "");
+}
+
+// Re-export for internal use
+import { formatEther as formatEtherRaw } from "ethers";
+
+export function formatAmount(wei) {
+  const { formatEther } = require("ethers");
+  const raw = formatEther(wei);
+  const num = parseFloat(raw);
+
+  if (num === 0) return "0";
+  if (num >= 1) return num.toFixed(4).replace(/\.?0+$/, "");
+  return num.toPrecision(4).replace(/\.?0+$/, "");
+}

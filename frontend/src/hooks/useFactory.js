@@ -32,6 +32,7 @@ export function useFactory() {
             deadline,
             contributed,
             contributionsReceived,
+            proposalCount,
           ] = await Promise.all([
             pot.name(),
             pot.state(),
@@ -41,18 +42,37 @@ export function useFactory() {
             pot.deadline(),
             pot.hasContributed(account),
             pot.contributionsReceived(),
+            pot.proposalCount(),
           ]);
+
+          // Count pending votes (active proposals where user hasn't voted)
+          let pendingVotes = 0;
+          const pCount = Number(proposalCount);
+          const potState = Number(state);
+
+          if (potState === 1 && pCount > 0) {
+            // Only check ACTIVE pots
+            for (let i = 0; i < pCount; i++) {
+              const [, , , , , , , pState] = await pot.getProposal(i);
+              if (Number(pState) === 0) {
+                // Proposal is ACTIVE
+                const voted = await pot.hasVotedOnProposal(i, account);
+                if (!voted) pendingVotes++;
+              }
+            }
+          }
 
           return {
             address: addr,
             name,
-            state: Number(state),
+            state: potState,
             totalFunds,
             contributionAmount,
             memberCount: Number(memberCount),
             deadline: Number(deadline),
             contributed,
             contributionsReceived: Number(contributionsReceived),
+            pendingVotes,
           };
         })
       );
@@ -68,7 +88,7 @@ export function useFactory() {
   // ── Write: create a new pot ───────────────
 
   const createPot = useCallback(
-    async ({ name, members, amount, deadlineDays }) => {
+    async ({ name, token = ZeroAddress, members, amount, deadlineDays, isETH = true }) => {
       if (!signer || !factoryAddress) return;
 
       try {
@@ -76,13 +96,18 @@ export function useFactory() {
         const deadline =
           Math.floor(Date.now() / 1000) + parseInt(deadlineDays) * 86400;
 
+        // ETH uses 18 decimals (parseEther), USDC/USDT use 6
+        const parsedAmount = isETH
+          ? parseEther(amount)
+          : BigInt(Math.round(parseFloat(amount) * 1e6));
+
         showToast("Creating pot... confirm in your wallet.", "info");
 
         const tx = await factory.createPot(
           name,
-          ZeroAddress,
+          token,
           members,
-          parseEther(amount),
+          parsedAmount,
           deadline
         );
 
