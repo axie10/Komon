@@ -49,9 +49,10 @@ function ProposalForm({ onSubmit, onCancel, loading, t }) {
   );
 }
 
-function ProposalCard({ proposal, potState, memberCount, onVote, onExecute, loading, displayName, t }) {
+function ProposalCard({ proposal, potState, memberCount, onVote, onExecute, onCancel, loading, displayName, t }) {
   const canVote = proposal.state === PROPOSAL_STATE.ACTIVE && !proposal.voted && potState === POT_STATE.ACTIVE;
-  const canExecute = proposal.state === PROPOSAL_STATE.APPROVED;
+  const canExecute = proposal.state === PROPOSAL_STATE.APPROVED && potState === POT_STATE.ACTIVE;
+  const canCancel = proposal.state === PROPOSAL_STATE.APPROVED;
   const quorumNeeded = Math.ceil((memberCount * 2) / 3);
   const proposalLabels = [t("proposalStates.active"), t("proposalStates.approved"), t("proposalStates.executed"), t("proposalStates.rejected")];
 
@@ -71,13 +72,14 @@ function ProposalCard({ proposal, potState, memberCount, onVote, onExecute, load
         <span className="font-medium text-slate-700 dark:text-slate-200">{formatETH(proposal.amount)} ETH</span>
         <span>→ {displayName(proposal.recipient)}</span>
       </div>
-      {proposal.state === PROPOSAL_STATE.ACTIVE && (
-        <div className="mb-3">
-          <ProgressBar current={proposal.votesFor} total={quorumNeeded} label={`${t("potDetail.votesNeeded")}: ${quorumNeeded}`} color="bg-emerald-500" />
-          <div className="flex gap-3 mt-1 text-xs">
-            <span className="text-emerald-600">✓ {proposal.votesFor} {t("potDetail.forLabel")}</span>
-            <span className="text-red-500">✕ {proposal.votesAgainst} {t("potDetail.againstLabel")}</span>
-          </div>
+      {proposal.state === PROPOSAL_STATE.APPROVED && proposal.cancelVotes > 0 && (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="text-xs bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2.5 py-1 rounded-lg font-medium">
+            🚫 {proposal.cancelVotes}/{Math.ceil((memberCount * 2) / 3)} {t("potDetail.cancelVotes")}
+          </span>
+          {proposal.votedCancel && (
+            <span className="text-xs text-slate-400">({t("potDetail.youVotedCancel")})</span>
+          )}
         </div>
       )}
       <div className="flex items-center justify-end gap-2">
@@ -88,6 +90,7 @@ function ProposalCard({ proposal, potState, memberCount, onVote, onExecute, load
           </>
         )}
         {proposal.state === PROPOSAL_STATE.ACTIVE && proposal.voted && <span className="text-xs text-slate-400 py-1.5">{t("potDetail.voted")}</span>}
+        {canCancel && !proposal.votedCancel && <button onClick={() => onCancel(proposal.id)} disabled={loading} className="bg-red-100 hover:bg-red-200 text-red-700 text-xs font-medium px-3 py-1.5 rounded-lg transition">{t("potDetail.cancelProposal")}</button>}
         {canExecute && <button onClick={() => onExecute(proposal.id)} disabled={loading} className="bg-komon-600 hover:bg-komon-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">{t("potDetail.execute")}</button>}
       </div>
     </div>
@@ -106,12 +109,20 @@ export default function PotDetail() {
   const [confirmAction, setConfirmAction] = useState(null);
   const [filter, setFilter] = useState("all");
 
-  const { pot, proposals, loading, actionLoading, loadPot, contribute, createProposal, vote, executeProposal, cancelPot, emergencyExit, closePot, claimRefund } = usePot(address);
+  const { pot, proposals, loading, actionLoading, loadPot, contribute, createProposal, vote, executeProposal, cancelProposal, cancelPot, emergencyExit, closePot, claimRefund } = usePot(address);
 
   useEffect(() => { loadPot(); }, [loadPot]);
   useEffect(() => { if (pot?.members) resolveMultiple(pot.members); }, [pot?.members, resolveMultiple]);
 
   const handleCreateProposal = async (data) => { const ok = await createProposal(data); if (ok) setShowForm(false); };
+  const handleCancelProposal = (proposalId) => {
+    setConfirmAction({
+      title: t("confirm.cancelProposalTitle"),
+      message: t("confirm.cancelProposalMsg"),
+      confirmLabel: t("confirm.cancelProposalBtn"),
+      action: () => cancelProposal(proposalId),
+    });
+  };
 
   // Display priority: alias → ENS → shortened address
   const resolveName = useCallback((addr) => {
@@ -231,7 +242,7 @@ export default function PotDetail() {
           </div>
           <div className="space-y-3">
             {filteredProposals.length > 0 ? (
-              filteredProposals.map((p) => <ProposalCard key={p.id} proposal={p} potState={pot.state} memberCount={pot.memberCount} onVote={vote} onExecute={executeProposal} loading={actionLoading} displayName={resolveName} t={t} />)
+              filteredProposals.map((p) => <ProposalCard key={p.id} proposal={p} potState={pot.state} memberCount={pot.memberCount} onVote={vote} onExecute={executeProposal} onCancel={handleCancelProposal} loading={actionLoading} displayName={resolveName} t={t} />)
             ) : (
               <p className="text-sm text-slate-400 text-center py-4">{t("filters.all")}: 0</p>
             )}

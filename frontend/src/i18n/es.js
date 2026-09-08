@@ -87,6 +87,9 @@ export default {
     you: "Tú",
     loading: "Cargando bote...",
     contributions: "Contribuciones",
+    cancelProposal: "Cancelar propuesta",
+    cancelVotes: "votos para cancelar",
+    youVotedCancel: "has votado para cancelar",
   },
   activity: {
     title: "Actividad",
@@ -105,6 +108,8 @@ export default {
     closed: "Bote cerrado por el creador",
     refundClaimed: "reclamó reembolso de",
     showMore: "Ver más",
+    cancelVote: "votó para cancelar propuesta",
+    proposalCancelled: "cancelada — fondos liberados",
   },
   confirm: {
     emergencyTitle: "Salida de emergencia",
@@ -119,6 +124,9 @@ export default {
     executeMsg: "Esto enviará los fondos al destinatario. Esta acción no se puede deshacer.",
     executeBtn: "Ejecutar",
     cancelBtn: "Cancelar",
+    cancelProposalTitle: "Cancelar propuesta",
+    cancelProposalMsg: "Esto votará para cancelar la propuesta. Si 2/3 de los miembros votan, los fondos reservados se liberarán al pot.",
+    cancelProposalBtn: "Votar para cancelar",
   },
   states: {
     funding: "Financiando",

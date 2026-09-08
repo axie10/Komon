@@ -12,7 +12,7 @@ export default function Toast() {
 
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(clearToast, 4000);
+    const timer = setTimeout(clearToast, 8000);
     return () => clearTimeout(timer);
   }, [toast, clearToast]);
 

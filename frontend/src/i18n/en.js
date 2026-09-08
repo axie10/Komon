@@ -87,6 +87,9 @@ export default {
     you: "You",
     loading: "Loading pot...",
     contributions: "Contributions",
+    cancelProposal: "Cancel proposal",
+    cancelVotes: "votes to cancel",
+    youVotedCancel: "you voted to cancel",
   },
   activity: {
     title: "Activity",
@@ -105,6 +108,8 @@ export default {
     closed: "Pot closed by creator",
     refundClaimed: "claimed refund",
     showMore: "Show more",
+    cancelVote: "voted to cancel proposal",
+    proposalCancelled: "cancelled — funds released",
   },
   confirm: {
     emergencyTitle: "Emergency exit",
@@ -119,6 +124,9 @@ export default {
     executeMsg: "This will send the funds to the recipient. This action cannot be undone.",
     executeBtn: "Execute",
     cancelBtn: "Cancel",
+    cancelProposalTitle: "Cancel proposal",
+    cancelProposalMsg: "This will vote to cancel the proposal. If 2/3 of members vote, the reserved funds will be released back to the pot.",
+    cancelProposalBtn: "Vote to cancel",
   },
   states: {
     funding: "Funding",

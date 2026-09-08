@@ -65,6 +65,11 @@ export function usePot(potAddress) {
 
         const voted = await contract.hasVotedOnProposal(i, account);
 
+        // Read the raw proposal struct to get cancelVotes
+        const rawProposal = await contract.proposals(i);
+        const cancelVotes = Number(rawProposal.cancelVotes);
+        const votedCancel = await contract.hasVotedCancelOnProposal(i, account);
+
         loadedProposals.push({
           id: i,
           proposer,
@@ -76,6 +81,8 @@ export function usePot(potAddress) {
           votesAgainst: Number(votesAgainst),
           state: Number(pState),
           voted,
+          cancelVotes,       // ← nuevo
+          votedCancel,       // ← nuevo
         });
       }
 
@@ -192,6 +199,14 @@ export function usePot(potAddress) {
     [execAction, getContract]
   );
 
+  const cancelProposal = useCallback(
+    (proposalId) =>
+      execAction("Cancelling proposal", () =>
+        getContract().cancelProposal(proposalId)
+      ),
+    [execAction, getContract]
+  );
+
   const claimRefund = useCallback(
     () => execAction("Claiming refund", () => getContract().claimRefund()),
     [execAction, getContract]
@@ -213,6 +228,7 @@ export function usePot(potAddress) {
     vote,
     executeProposal,
     cancelPot,
+    cancelProposal,
     emergencyExit,
     closePot,
     claimRefund,

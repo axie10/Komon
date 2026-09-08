@@ -128,4 +128,6 @@ interface IPot {
         );
 
     function hasVotedOnProposal(uint256 _proposalId, address _member) external view returns (bool);
+    function hasVotedCancelOnProposal(uint256 _proposalId, address _member) external view returns (bool);
+    function cancelProposal(uint256 _proposalId) external;
 }

@@ -32,6 +32,9 @@ export const POT_ABI = [
   // View — Proposals
   "function getProposal(uint256) view returns (address,address,uint256,string,string,uint256,uint256,uint8)",
   "function hasVotedOnProposal(uint256,address) view returns (bool)",
+  "function hasVotedCancelOnProposal(uint256,address) view returns (bool)",
+  "function proposals(uint256) view returns (uint256 id, address proposer, address recipient, uint256 amount, string description, string tag, uint256 votesFor, uint256 votesAgainst, uint8 state, uint256 cancelVotes)",
+
 
   // Write — Contributions
   "function contribute() payable",
@@ -40,6 +43,7 @@ export const POT_ABI = [
   "function createProposal(address,uint256,string,string) returns (uint256)",
   "function vote(uint256,bool)",
   "function executeProposal(uint256)",
+  "function cancelProposal(uint256)",
 
   // Write — Lifecycle
   "function cancelPot()",

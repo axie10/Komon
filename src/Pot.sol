@@ -524,6 +524,11 @@ contract Pot is ReentrancyGuard {
         return proposals[_proposalId].hasVoted[_member];
     }
 
+    /// @notice Check if a member has voted to cancel a specific proposal
+    function hasVotedCancelOnProposal(uint256 _proposalId, address _member) external view returns (bool) {
+        return proposals[_proposalId].hasVotedCancel[_member];
+    }
+
     // ──────────────────────────────────────────────
     //  Internal Helpers
     // ──────────────────────────────────────────────

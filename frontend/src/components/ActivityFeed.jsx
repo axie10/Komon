@@ -17,6 +17,8 @@ const EVENT_ABI = [
   "event PotCancelled()",
   "event PotClosed()",
   "event RefundClaimed(address indexed member, uint256 amount)",
+  "event ProposalCancelled(uint256 indexed proposalId)",
+  "event CancelVote(uint256 indexed proposalId, address indexed voter)",
 ];
 
 function formatEvent(event, displayName, t) {
@@ -45,6 +47,16 @@ function formatEvent(event, displayName, t) {
       return { icon: "🔒", text: t("activity.closed") };
     case "RefundClaimed":
       return { icon: "💸", text: `${displayName(args[0])} ${t("activity.refundClaimed")} ${formatETH(args[1])} ETH` };
+    case "CancelVote":
+      return {
+        icon: "🚫",
+        text: `${displayName(args[1])} ${t("activity.cancelVote")} #${args[0].toString()}`
+      };
+    case "ProposalCancelled":
+      return {
+        icon: "🔓",
+        text: `#${args[0].toString()} ${t("activity.proposalCancelled")}`
+      };
     default:
       return { icon: "📝", text: eventName };
   }
