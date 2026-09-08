@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.35;
+pragma solidity 0.8.35;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -50,7 +50,9 @@ contract Pot is ReentrancyGuard {
         uint256 votesFor;
         uint256 votesAgainst;
         ProposalState state;
+        uint256 cancelVotes;
         mapping(address => bool) hasVoted;
+        mapping(address => bool) hasVotedCancel;
     }
 
     // ──────────────────────────────────────────────
@@ -69,6 +71,9 @@ contract Pot is ReentrancyGuard {
     address[] public members;
     mapping(address => bool) public isMember;
     mapping(address => bool) public hasContributed;
+    /// @notice Amount actually credited per member (may be < contributionAmount
+    ///         for fee-on-transfer tokens, where the pot receives less than it pulled)
+    mapping(address => uint256) public contributedAmount;
     uint256 public contributionsReceived;
 
     // --- Pot state ---
@@ -77,11 +82,16 @@ contract Pot is ReentrancyGuard {
 
     // --- Proposals ---
     uint256 public proposalCount;
+    uint256 public reservedFunds;
     mapping(uint256 => Proposal) public proposals;
 
     // --- Emergency exit ---
     mapping(address => bool) public hasVotedEmergency;
     uint256 public emergencyVotes;
+
+    // --- Normal close ---
+    mapping(address => bool) public hasVotedClose;
+    uint256 public closeVotes;
 
     // --- Refunds ---
     mapping(address => bool) public hasClaimedRefund;
@@ -111,7 +121,10 @@ contract Pot is ReentrancyGuard {
     event ProposalRejected(uint256 indexed proposalId);
     event EmergencyExitVote(address indexed voter);
     event EmergencyExitTriggered();
+    event CloseVote(address indexed voter);
     event RefundClaimed(address indexed member, uint256 amount);
+    event ProposalCancelled(uint256 indexed proposalId);
+    event CancelVote(uint256 indexed proposalId, address indexed voter);
 
     // ──────────────────────────────────────────────
     //  Errors
@@ -124,12 +137,16 @@ contract Pot is ReentrancyGuard {
     error DeadlineNotReached();
     error DeadlineReached();
     error ProposalNotActive();
+    error ProposalDoesNotExist();
     error AlreadyVoted();
     error NotEnoughVotes();
     error InsufficientFunds();
     error AlreadyVotedEmergency();
+    error AlreadyVotedClose();
     error AlreadyClaimed();
     error TransferFailed();
+    error AlreadyVotedCancel();
+    error ProposalNotCancellable();
 
     // ──────────────────────────────────────────────
     //  Modifiers
@@ -170,7 +187,6 @@ contract Pot is ReentrancyGuard {
         require(_deadline > block.timestamp, "Pot: deadline must be in the future");
 
         name = _name;
-        creator = msg.sender;
         token = IERC20(_token);
         contributionAmount = _amount;
         deadline = _deadline;
@@ -194,24 +210,39 @@ contract Pot is ReentrancyGuard {
      * @dev For ETH pots, send exact `contributionAmount` as msg.value.
      *      For ERC-20 pots, approve this contract first, then call with msg.value = 0.
      *      When all members contribute, the pot auto-transitions to ACTIVE.
+     *
+     *      Security: the double-contribution guards (`hasContributed`,
+     *      `contributionsReceived`) are written BEFORE the token transfer so a token
+     *      with transfer hooks cannot re-enter and be credited twice. `nonReentrant`
+     *      backs that up. Accounting credits the balance actually received, so
+     *      fee-on-transfer tokens can never make `totalFunds` exceed the real balance.
      */
-    function contribute() external payable onlyMember inState(PotState.FUNDING) {
+    function contribute() external payable onlyMember inState(PotState.FUNDING) nonReentrant {
         if (block.timestamp >= deadline) revert DeadlineReached();
         if (hasContributed[msg.sender]) revert AlreadyContributed();
 
-        if (_isETH()) {
-            if (msg.value != contributionAmount) revert IncorrectAmount();
-        } else {
-            if (msg.value != 0) revert IncorrectAmount();
-            token.safeTransferFrom(msg.sender, address(this), contributionAmount);
-        }
-
-        // Effects
+        // Effects first (CEI) — these guard against being counted twice
         hasContributed[msg.sender] = true;
         contributionsReceived++;
-        totalFunds += contributionAmount;
 
-        emit ContributionReceived(msg.sender, contributionAmount);
+        uint256 credited;
+
+        if (_isETH()) {
+            if (msg.value != contributionAmount) revert IncorrectAmount();
+            credited = msg.value;
+        } else {
+            if (msg.value != 0) revert IncorrectAmount();
+
+            // Interaction — measure what actually landed, not what we asked for
+            uint256 balanceBefore = token.balanceOf(address(this));
+            token.safeTransferFrom(msg.sender, address(this), contributionAmount);
+            credited = token.balanceOf(address(this)) - balanceBefore;
+        }
+
+        contributedAmount[msg.sender] = credited;
+        totalFunds += credited;
+
+        emit ContributionReceived(msg.sender, credited);
 
         // Auto-activate when all members have contributed
         if (contributionsReceived == members.length) {
@@ -240,7 +271,7 @@ contract Pot is ReentrancyGuard {
     {
         require(_recipient != address(0), "Pot: invalid recipient");
         require(_amount > 0, "Pot: amount must be greater than 0");
-        if (_amount > totalFunds) revert InsufficientFunds();
+        if (_amount > totalFunds - reservedFunds) revert InsufficientFunds();
 
         proposalId = proposalCount;
         Proposal storage p = proposals[proposalId];
@@ -264,6 +295,10 @@ contract Pot is ReentrancyGuard {
      * @param _inFavor     true = approve, false = reject
      */
     function vote(uint256 _proposalId, bool _inFavor) external onlyMember inState(PotState.ACTIVE) {
+        // Without this check an uninitialized proposal would look ACTIVE,
+        // since ProposalState.ACTIVE is enum value 0
+        if (_proposalId >= proposalCount) revert ProposalDoesNotExist();
+
         Proposal storage p = proposals[_proposalId];
 
         if (p.state != ProposalState.ACTIVE) revert ProposalNotActive();
@@ -283,6 +318,7 @@ contract Pot is ReentrancyGuard {
         // Check if 2/3 majority reached → auto-approve
         if (_hasReachedQuorum(p.votesFor)) {
             p.state = ProposalState.APPROVED;
+            reservedFunds += p.amount;
         }
 
         // Check if rejection is mathematically certain
@@ -302,6 +338,8 @@ contract Pot is ReentrancyGuard {
      * @param _proposalId  ID of the approved proposal
      */
     function executeProposal(uint256 _proposalId) external nonReentrant inState(PotState.ACTIVE) {
+        if (_proposalId >= proposalCount) revert ProposalDoesNotExist();
+
         Proposal storage p = proposals[_proposalId];
 
         if (p.state != ProposalState.APPROVED) revert NotEnoughVotes();
@@ -310,6 +348,7 @@ contract Pot is ReentrancyGuard {
         // Effects (before interaction — CEI pattern)
         p.state = ProposalState.EXECUTED;
         totalFunds -= p.amount;
+        reservedFunds -= p.amount;
 
         // Interaction
         if (_isETH()) {
@@ -338,6 +377,34 @@ contract Pot is ReentrancyGuard {
     }
 
     /**
+     * @notice Vote to cancel an approved proposal that hasn't been executed.
+     * @dev Useful for freeing up reserved funds when a proposal gets stuck
+     *      (e.g. recipient unreachable, plans changed, or after emergency exit).
+     *      Requires the same 2/3 majority. Only works on APPROVED proposals.
+     * @param _proposalId  ID of the proposal to cancel
+     */
+    function cancelProposal(uint256 _proposalId) external onlyMember {
+        if (_proposalId >= proposalCount) revert ProposalDoesNotExist();
+
+        Proposal storage p = proposals[_proposalId];
+
+        // Only APPROVED (not yet executed) can be cancelled
+        if (p.state != ProposalState.APPROVED) revert ProposalNotCancellable();
+        if (p.hasVotedCancel[msg.sender]) revert AlreadyVotedCancel();
+
+        p.hasVotedCancel[msg.sender] = true;
+        p.cancelVotes++;
+
+        emit CancelVote(_proposalId, msg.sender);
+
+        if (_hasReachedQuorum(p.cancelVotes)) {
+            p.state = ProposalState.REJECTED;
+            reservedFunds -= p.amount; // ← libera la reserva
+            emit ProposalCancelled(_proposalId);
+        }
+    }
+
+    /**
      * @notice Vote to trigger an emergency exit.
      * @dev When 2/3 of members vote for emergency exit, the pot closes
      *      and remaining funds become available for proportional refund.
@@ -358,15 +425,25 @@ contract Pot is ReentrancyGuard {
     }
 
     /**
-     * @notice Close the pot normally. Only the creator can do this.
-     * @dev After closing, remaining funds are available via claimRefund().
+     * @notice Vote to close the pot normally.
+     * @dev Requires the same 2/3 majority as every other fund-moving decision.
+     *      No single member — not even the creator — can unilaterally end the pot
+     *      and force refunds on everyone else.
+     *      After closing, remaining funds are available via claimRefund().
      */
-    function closePot() external inState(PotState.ACTIVE) {
-        require(msg.sender == creator, "Pot: only creator can close");
+    function closePot() external onlyMember inState(PotState.ACTIVE) {
+        if (hasVotedClose[msg.sender]) revert AlreadyVotedClose();
 
-        refundPerMember = totalFunds / members.length;
-        state = PotState.CLOSED;
-        emit PotClosed();
+        hasVotedClose[msg.sender] = true;
+        closeVotes++;
+
+        emit CloseVote(msg.sender);
+
+        if (_hasReachedQuorum(closeVotes)) {
+            refundPerMember = totalFunds / members.length;
+            state = PotState.CLOSED;
+            emit PotClosed();
+        }
     }
 
     /**
@@ -384,7 +461,10 @@ contract Pot is ReentrancyGuard {
 
         if (state == PotState.CANCELLED) {
             if (!hasContributed[msg.sender]) revert IncorrectAmount();
-            refundAmount = contributionAmount;
+            // Refund what was actually credited, not the nominal amount —
+            // otherwise fee-on-transfer tokens would over-refund early claimers
+            // and leave the last one unable to claim
+            refundAmount = contributedAmount[msg.sender];
         } else {
             refundAmount = refundPerMember;
         }

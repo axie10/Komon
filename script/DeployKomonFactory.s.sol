@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.35;
+pragma solidity 0.8.35;
 
 import {Script, console} from "forge-std/Script.sol";
 import {KomonFactory} from "../src/KomonFactory.sol";

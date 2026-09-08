@@ -84,6 +84,18 @@ contract PotTest is Test {
         }
     }
 
+    /// @dev Reach the 2/3 quorum needed to close the pot (4 of 5 members)
+    function _closeByVote(Pot pot) internal {
+        vm.prank(alice);
+        pot.closePot();
+        vm.prank(bob);
+        pot.closePot();
+        vm.prank(charlie);
+        pot.closePot();
+        vm.prank(dave);
+        pot.closePot();
+    }
+
     /// @dev Create a proposal and get 4 out of 5 votes (above 2/3 threshold)
     function _createAndApproveProposal(Pot pot) internal returns (uint256) {
         vm.prank(alice);
@@ -549,20 +561,65 @@ contract PotTest is Test {
     //  CLOSE POT
     // ══════════════════════════════════════════════
 
-    function test_ClosePot_ByCreator() public {
+    function test_ClosePot_RequiresTwoThirds() public {
         _fundETHPot();
 
-        // This test contract is the creator (it called `new Pot(...)`)
+        // 3 of 5 votes → not enough (3*3=9 < 5*2=10)
+        vm.prank(alice);
+        ethPot.closePot();
+        vm.prank(bob);
+        ethPot.closePot();
+        vm.prank(charlie);
+        ethPot.closePot();
+
+        assertEq(ethPot.closeVotes(), 3);
+        assertEq(uint256(ethPot.state()), uint256(Pot.PotState.ACTIVE));
+
+        // 4th vote tips it over → CLOSED
+        vm.prank(dave);
         ethPot.closePot();
 
         assertEq(uint256(ethPot.state()), uint256(Pot.PotState.CLOSED));
+        assertEq(ethPot.refundPerMember(), 1 ether);
     }
 
-    function test_RevertWhen_NonCreatorCloses() public {
+    /// @dev M-03: the creator must not be able to unilaterally end the pot
+    function test_RevertWhen_CreatorClosesAlone() public {
+        _fundETHPot();
+
+        // This test contract is the creator, but it is not a member
+        vm.expectRevert(Pot.NotMember.selector);
+        ethPot.closePot();
+
+        assertEq(uint256(ethPot.state()), uint256(Pot.PotState.ACTIVE));
+    }
+
+    /// @dev A single member's vote must not close the pot for everyone
+    function test_SingleMemberCloseVote_DoesNotClose() public {
         _fundETHPot();
 
         vm.prank(alice);
-        vm.expectRevert("Pot: only creator can close");
+        ethPot.closePot();
+
+        assertEq(uint256(ethPot.state()), uint256(Pot.PotState.ACTIVE));
+    }
+
+    function test_RevertWhen_NonMemberCloses() public {
+        _fundETHPot();
+
+        vm.prank(outsider);
+        vm.expectRevert(Pot.NotMember.selector);
+        ethPot.closePot();
+    }
+
+    function test_RevertWhen_DoubleCloseVote() public {
+        _fundETHPot();
+
+        vm.prank(alice);
+        ethPot.closePot();
+
+        vm.prank(alice);
+        vm.expectRevert(Pot.AlreadyVotedClose.selector);
         ethPot.closePot();
     }
 
@@ -573,8 +630,8 @@ contract PotTest is Test {
     function test_ClaimRefund_USDC_AfterClose() public {
         _fundUSDCPot();
 
-        // Creator (this contract) closes the pot
-        usdcPot.closePot();
+        // Members vote to close the pot
+        _closeByVote(usdcPot);
 
         uint256 aliceBefore = usdc.balanceOf(alice);
 
@@ -587,7 +644,7 @@ contract PotTest is Test {
 
     function test_RevertWhen_DoubleClaimRefund() public {
         _fundETHPot();
-        ethPot.closePot();
+        _closeByVote(ethPot);
 
         vm.prank(alice);
         ethPot.claimRefund();
@@ -608,7 +665,7 @@ contract PotTest is Test {
 
     function test_AllMembersClaimRefund_DrainsCompletely() public {
         _fundETHPot();
-        ethPot.closePot();
+        _closeByVote(ethPot);
 
         for (uint256 i = 0; i < members.length; i++) {
             vm.prank(members[i]);
@@ -672,5 +729,153 @@ contract PotTest is Test {
         emit Pot.ProposalExecuted(proposalId, outsider, 0.5 ether, "food");
 
         ethPot.executeProposal(proposalId);
+    }
+
+    // ══════════════════════════════════════════════
+    //  CANCEL PROPOSAL
+    // ══════════════════════════════════════════════
+
+    function test_CancelProposal_Success() public {
+        _fundETHPot();
+
+        // Alice creates a proposal, gets it approved
+        vm.prank(alice);
+        ethPot.createProposal(outsider, 1 ether, "Trip", "transport");
+
+        vm.prank(alice);
+        ethPot.vote(0, true);
+        vm.prank(bob);
+        ethPot.vote(0, true);
+        vm.prank(charlie);
+        ethPot.vote(0, true);
+        vm.prank(dave);
+        ethPot.vote(0, true);
+
+        // Proposal is APPROVED, funds are reserved
+        (,,,,,,, Pot.ProposalState stateBefore) = ethPot.getProposal(0);
+        assertEq(uint256(stateBefore), uint256(Pot.ProposalState.APPROVED));
+
+        // 4 out of 5 vote to cancel (reaches 2/3)
+        vm.prank(alice);
+        ethPot.cancelProposal(0);
+        vm.prank(bob);
+        ethPot.cancelProposal(0);
+        vm.prank(charlie);
+        ethPot.cancelProposal(0);
+        vm.prank(dave);
+        ethPot.cancelProposal(0);
+
+        // Should now be REJECTED and funds released
+        (,,,,,,, Pot.ProposalState stateAfter) = ethPot.getProposal(0);
+        assertEq(uint256(stateAfter), uint256(Pot.ProposalState.REJECTED));
+    }
+
+    function test_CancelProposal_FreesReservedFunds() public {
+        _fundETHPot();
+
+        // Create and approve a 4 ETH proposal (leaves only 1 ETH available)
+        vm.prank(alice);
+        ethPot.createProposal(outsider, 4 ether, "Big expense", "other");
+
+        vm.prank(alice);
+        ethPot.vote(0, true);
+        vm.prank(bob);
+        ethPot.vote(0, true);
+        vm.prank(charlie);
+        ethPot.vote(0, true);
+        vm.prank(dave);
+        ethPot.vote(0, true);
+
+        // Try to create another 4 ETH proposal — should fail (only 1 ETH available)
+        vm.prank(bob);
+        vm.expectRevert(Pot.InsufficientFunds.selector);
+        ethPot.createProposal(outsider, 4 ether, "Another", "other");
+
+        // Cancel the first proposal
+        vm.prank(alice);
+        ethPot.cancelProposal(0);
+        vm.prank(bob);
+        ethPot.cancelProposal(0);
+        vm.prank(charlie);
+        ethPot.cancelProposal(0);
+        vm.prank(dave);
+        ethPot.cancelProposal(0);
+
+        // Now the 4 ETH proposal should succeed
+        vm.prank(bob);
+        ethPot.createProposal(outsider, 4 ether, "Another", "other");
+    }
+
+    function test_RevertWhen_CancelActiveProposal() public {
+        _fundETHPot();
+
+        vm.prank(alice);
+        ethPot.createProposal(outsider, 1 ether, "Test", "other");
+
+        // Proposal is still ACTIVE, not APPROVED
+        vm.prank(alice);
+        vm.expectRevert(Pot.ProposalNotCancellable.selector);
+        ethPot.cancelProposal(0);
+    }
+
+    function test_RevertWhen_CancelExecutedProposal() public {
+        _fundETHPot();
+        uint256 proposalId = _createAndApproveProposal(ethPot);
+        ethPot.executeProposal(proposalId);
+
+        // Already EXECUTED
+        vm.prank(alice);
+        vm.expectRevert(Pot.ProposalNotCancellable.selector);
+        ethPot.cancelProposal(proposalId);
+    }
+
+    function test_RevertWhen_DoubleCancelVote() public {
+        _fundETHPot();
+        uint256 proposalId = _createAndApproveProposal(ethPot);
+
+        vm.prank(alice);
+        ethPot.cancelProposal(proposalId);
+
+        vm.prank(alice);
+        vm.expectRevert(Pot.AlreadyVotedCancel.selector);
+        ethPot.cancelProposal(proposalId);
+    }
+
+    function test_RevertWhen_NonMemberCancels() public {
+        _fundETHPot();
+        uint256 proposalId = _createAndApproveProposal(ethPot);
+
+        vm.prank(outsider);
+        vm.expectRevert(Pot.NotMember.selector);
+        ethPot.cancelProposal(proposalId);
+    }
+
+    function test_CancelProposal_WorksAfterEmergencyExit() public {
+        _fundETHPot();
+        uint256 proposalId = _createAndApproveProposal(ethPot);
+
+        // Trigger emergency exit
+        vm.prank(alice);
+        ethPot.emergencyExit();
+        vm.prank(bob);
+        ethPot.emergencyExit();
+        vm.prank(charlie);
+        ethPot.emergencyExit();
+        vm.prank(dave);
+        ethPot.emergencyExit();
+
+        // Pot is now CLOSED, but the APPROVED proposal is stuck
+        // cancelProposal should still work since it's not restricted to ACTIVE state
+        vm.prank(alice);
+        ethPot.cancelProposal(proposalId);
+        vm.prank(bob);
+        ethPot.cancelProposal(proposalId);
+        vm.prank(charlie);
+        ethPot.cancelProposal(proposalId);
+        vm.prank(dave);
+        ethPot.cancelProposal(proposalId);
+
+        (,,,,,,, Pot.ProposalState finalState) = ethPot.getProposal(proposalId);
+        assertEq(uint256(finalState), uint256(Pot.ProposalState.REJECTED));
     }
 }
