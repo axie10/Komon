@@ -204,14 +204,32 @@ export default function PotDetail() {
           )}
           {pot.state === POT_STATE.ACTIVE && (
             <>
-              <button onClick={() => setShowForm(!showForm)} disabled={actionLoading} className="bg-komon-600 hover:bg-komon-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+              <button onClick={() => setShowForm(!showForm)} disabled={actionLoading} className="h-9 bg-komon-600 hover:bg-komon-700 text-white text-sm font-medium px-4 rounded-lg transition">
                 {showForm ? t("potDetail.cancel") : t("potDetail.newProposal")}
               </button>
-              <button onClick={() => setConfirmAction({ title: t("confirm.emergencyTitle"), message: t("confirm.emergencyMsg"), confirmLabel: t("confirm.emergencyBtn"), action: emergencyExit })} disabled={actionLoading}
-                className="bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white text-sm font-medium px-4 py-2 rounded-lg transition">{t("potDetail.emergencyExit")}</button>
-              {isCreator && (
+
+              {!pot.hasVotedEmergency ? (
+                <button onClick={() => setConfirmAction({ title: t("confirm.emergencyTitle"), message: t("confirm.emergencyMsg"), confirmLabel: t("confirm.emergencyBtn"), action: emergencyExit })} disabled={actionLoading}
+                  className="h-9 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 text-white text-sm font-medium px-4 rounded-lg transition">
+                  {t("potDetail.emergencyExit")}
+                  {pot.emergencyVotes > 0 && ` (${pot.emergencyVotes}/${Math.ceil((pot.memberCount * 2) / 3)})`}
+                </button>
+              ) : (
+                <span className="h-9 flex items-center text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-4 rounded-lg font-medium">
+                  🚨 {t("potDetail.emergencyVoted")} ({pot.emergencyVotes}/{Math.ceil((pot.memberCount * 2) / 3)})
+                </span>
+              )}
+
+              {!pot.hasVotedClose ? (
                 <button onClick={() => setConfirmAction({ title: t("confirm.closeTitle"), message: t("confirm.closeMsg"), confirmLabel: t("confirm.closeBtn"), action: closePot })} disabled={actionLoading}
-                  className="bg-slate-500 hover:bg-slate-600 disabled:bg-slate-300 text-white text-sm font-medium px-4 py-2 rounded-lg transition">{t("potDetail.closePot")}</button>
+                  className="h-9 bg-slate-500 hover:bg-slate-600 disabled:bg-slate-300 text-white text-sm font-medium px-4 rounded-lg transition">
+                  {t("potDetail.closePot")}
+                  {pot.closeVotes > 0 && ` (${pot.closeVotes}/${Math.ceil((pot.memberCount * 2) / 3)})`}
+                </button>
+              ) : (
+                <span className="h-9 flex items-center text-sm text-slate-600 bg-slate-100 dark:bg-slate-700 px-4 rounded-lg font-medium">
+                  🔒 {t("potDetail.closeVoted")} ({pot.closeVotes}/{Math.ceil((pot.memberCount * 2) / 3)})
+                </span>
               )}
             </>
           )}

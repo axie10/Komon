@@ -28,6 +28,10 @@ export const POT_ABI = [
   "function isMember(address) view returns (bool)",
   "function hasContributed(address) view returns (bool)",
   "function hasClaimedRefund(address) view returns (bool)",
+  "function hasVotedEmergency(address) view returns (bool)",
+  "function hasVotedClose(address) view returns (bool)",
+  "function emergencyVotes() view returns (uint256)",
+  "function closeVotes() view returns (uint256)",
 
   // View — Proposals
   "function getProposal(uint256) view returns (address,address,uint256,string,string,uint256,uint256,uint8)",

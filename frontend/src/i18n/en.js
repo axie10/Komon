@@ -90,6 +90,8 @@ export default {
     cancelProposal: "Cancel proposal",
     cancelVotes: "votes to cancel",
     youVotedCancel: "you voted to cancel",
+    emergencyVoted: "You voted for emergency exit",
+    closeVoted: "You voted to close",
   },
   activity: {
     title: "Activity",

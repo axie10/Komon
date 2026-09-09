@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { Contract, parseEther } from "ethers";
 import { useWallet } from "../context/WalletContext";
 import { POT_ABI } from "../config/abis";
+import { ZERO_ADDRESS } from "../config/constants";
 
 export function usePot(potAddress) {
   const { provider, signer, account, showToast } = useWallet();
@@ -22,6 +23,7 @@ export function usePot(potAddress) {
       const [
         name,
         creator,
+        token,
         state,
         totalFunds,
         contributionAmount,
@@ -32,9 +34,14 @@ export function usePot(potAddress) {
         contributed,
         members,
         hasClaimed,
+        hasVotedEmergency,
+        hasVotedClose,
+        emergencyVotes,
+        closeVotes,
       ] = await Promise.all([
         contract.name(),
         contract.creator(),
+        contract.token(),
         contract.state(),
         contract.totalFunds(),
         contract.contributionAmount(),
@@ -45,6 +52,10 @@ export function usePot(potAddress) {
         contract.hasContributed(account),
         contract.getMembers(),
         contract.hasClaimedRefund(account),
+        contract.hasVotedEmergency(account),
+        contract.hasVotedClose(account),
+        contract.emergencyVotes(),
+        contract.closeVotes(),
       ]);
 
       // Load proposals
@@ -86,10 +97,14 @@ export function usePot(potAddress) {
         });
       }
 
+      const isETH = token === ZERO_ADDRESS;
+
       setPot({
         address: potAddress,
         name,
         creator,
+        token,
+        isETH,
         state: Number(state),
         totalFunds,
         contributionAmount,
@@ -99,6 +114,10 @@ export function usePot(potAddress) {
         contributed,
         members,
         hasClaimed,
+        hasVotedEmergency,
+        hasVotedClose,
+        emergencyVotes: Number(emergencyVotes),
+        closeVotes: Number(closeVotes),
       });
 
       setProposals(loadedProposals);
