@@ -207,4 +207,10 @@ export default {
     invalidDeadline: "Introduce una fecha límite válida.",
     approvingToken: "Aprobando gasto del token...",
   },
+  footer: {
+    tagline: "Gastos en grupo sin confianza",
+    docs: "Docs",
+    terms: "Términos",
+    builtWith: "Hecho con",
+  },
 };

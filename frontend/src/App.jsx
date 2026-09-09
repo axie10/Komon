@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useWallet } from "./context/WalletContext";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 import Toast from "./components/Toast";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
@@ -19,42 +20,45 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Header />
 
-      <Routes>
-        <Route path="/" element={<Landing />} />
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<Landing />} />
 
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/create"
-          element={
-            <ProtectedRoute>
-              <CreatePot />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/create"
+            element={
+              <ProtectedRoute>
+                <CreatePot />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/pot/:address"
-          element={
-            <ProtectedRoute>
-              <PotDetail />
-            </ProtectedRoute>
-          }
-        />
+          <Route
+            path="/pot/:address"
+            element={
+              <ProtectedRoute>
+                <PotDetail />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
 
+      <Footer />
       <Toast />
     </div>
   );

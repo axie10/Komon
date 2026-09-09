@@ -207,4 +207,10 @@ export default {
     invalidDeadline: "Enter a valid deadline.",
     approvingToken: "Approving token spend...",
   },
+  footer: {
+    tagline: "Trustless group expenses",
+    docs: "Docs",
+    terms: "Terms",
+    builtWith: "Built with",
+  },
 };

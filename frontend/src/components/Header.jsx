@@ -28,7 +28,7 @@ export default function Header() {
           {/* Language toggle */}
           <button
             onClick={toggleLanguage}
-            className="text-xs font-medium px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+            className="h-9 text-xs font-medium px-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
           >
             {language === "en" ? "ES" : "EN"}
           </button>
@@ -36,7 +36,7 @@ export default function Header() {
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="text-base px-1.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
+            className="h-9 w-9 flex items-center justify-center text-base rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition"
           >
             {isDark ? "☀️" : "🌙"}
           </button>
@@ -44,17 +44,17 @@ export default function Header() {
           {isConnected && (
             <button
               onClick={() => navigate("/create")}
-              className="bg-komon-600 hover:bg-komon-700 text-white text-sm font-medium px-3 md:px-4 py-2 rounded-lg transition"
+              className="h-9 bg-komon-600 hover:bg-komon-700 text-white text-sm font-medium px-3 md:px-4 rounded-lg transition flex items-center justify-center"
             >
               <span className="hidden md:inline">{t("header.newPot")}</span>
-              <span className="md:hidden text-base">+</span>
+              <span className="md:hidden text-lg leading-none">+</span>
             </button>
           )}
 
           {isConnected ? (
             <button
               onClick={disconnect}
-              className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium px-2.5 md:px-4 py-2 rounded-lg transition flex items-center gap-1.5"
+              className="h-9 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium px-2.5 md:px-4 rounded-lg transition flex items-center gap-1.5"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 pulse-dot" />
               <span className="text-xs md:text-sm">{shortenAddress(account)}</span>
@@ -62,7 +62,7 @@ export default function Header() {
           ) : (
             <button
               onClick={connect}
-              className="bg-komon-600 hover:bg-komon-700 text-white text-sm font-medium px-3 md:px-4 py-2 rounded-lg transition"
+              className="h-9 bg-komon-600 hover:bg-komon-700 text-white text-sm font-medium px-3 md:px-4 rounded-lg transition"
             >
               {t("header.connect")}
             </button>
