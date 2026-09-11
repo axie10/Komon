@@ -25,6 +25,7 @@ export default function Landing() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-24 pb-16">
+      {/* Hero */}
       <div className="max-w-xl">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight mb-5 dark:text-white">
           {t("landing.title1")}
@@ -42,6 +43,7 @@ export default function Landing() {
         </button>
       </div>
 
+      {/* Features */}
       <div className="mt-20 grid md:grid-cols-3 gap-6">
         {features.map((f, i) => (
           <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
@@ -51,6 +53,33 @@ export default function Landing() {
           </div>
         ))}
       </div>
+
+      {/* Demo video */}
+      <section className="mt-24 md:mt-32">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl md:text-4xl font-bold dark:text-white mb-3">
+            {t("landing.demoTitle")}
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg">
+            {t("landing.demoSubtitle")}
+          </p>
+        </div>
+
+        <div className="flex justify-center">
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl bg-slate-900 border border-slate-200 dark:border-slate-700 max-w-[300px] md:max-w-[360px]">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-auto block"
+            >
+              <source src="/demo.mp4" type="video/mp4" />
+              {t("landing.videoFallback")}
+            </video>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

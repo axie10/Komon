@@ -18,6 +18,9 @@ export default {
     feature3Title: "Recibos on-chain",
     feature3Desc:
       "Cada gasto aprobado queda registrado de forma inmutable. Transparencia total, sin discusiones.",
+    demoTitle: "Míralo en acción",
+    demoSubtitle: "Crea un bote, vota gastos, ejecuta pagos — todo on-chain.",
+    videoFallback: "Tu navegador no soporta reproducción de video.",
   },
   dashboard: {
     title: "Tus botes",

@@ -18,6 +18,9 @@ export default {
     feature3Title: "On-chain receipts",
     feature3Desc:
       "Every approved expense is recorded immutably. Full transparency, no arguments.",
+    demoTitle: "See it in action",
+    demoSubtitle: "Create a pot, vote on expenses, execute payments — all on-chain.",
+    videoFallback: "Your browser doesn't support video playback.",
   },
   dashboard: {
     title: "Your pots",
