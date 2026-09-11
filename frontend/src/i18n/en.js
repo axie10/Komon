@@ -210,7 +210,7 @@ export default {
     approvingToken: "Approving token spend...",
   },
   footer: {
-    tagline: "Trustless group expenses",
+    tagline: "Group expenses",
     docs: "Docs",
     terms: "Terms",
     builtWith: "Built with",

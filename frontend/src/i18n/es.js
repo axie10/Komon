@@ -210,7 +210,7 @@ export default {
     approvingToken: "Aprobando gasto del token...",
   },
   footer: {
-    tagline: "Gastos en grupo sin confianza",
+    tagline: "Gastos en grupo",
     docs: "Docs",
     terms: "Términos",
     builtWith: "Hecho con",
