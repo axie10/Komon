@@ -231,7 +231,7 @@ Komon is deployed on **Arbitrum Sepolia** and hosted on Vercel. Anyone can try i
 
 **Factory contract:** [`0xC01A603934C10C15AA53368e2dEBcB20D591E96a`](https://sepolia.arbiscan.io/address/0xC01A603934C10C15AA53368e2dEBcB20D591E96a) (verified on Arbiscan)
 
-**Full walkthrough:** [docs/USER_GUIDE.md](./docs/USER_GUIDE.md)
+**Full walkthrough:** [docs/USER_GUIDE.md](./documentation/USER_GUIDE.md)
 
 ## Getting Started
 
