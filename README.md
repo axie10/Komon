@@ -227,7 +227,7 @@ komon/
 
 Komon is deployed on **Arbitrum Sepolia** and hosted on Vercel. Anyone can try it — you just need a Web3 wallet and some testnet ETH.
 
-**Live app:** [YOUR_VERCEL_URL]
+**Live app:** https://komon-three.vercel.app/
 
 **Factory contract:** [`0xC01A603934C10C15AA53368e2dEBcB20D591E96a`](https://sepolia.arbiscan.io/address/0xC01A603934C10C15AA53368e2dEBcB20D591E96a) (verified on Arbiscan)
 
