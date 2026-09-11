@@ -60,6 +60,7 @@ function formatEvent(event, displayName, t) {
     default:
       return { icon: "📝", text: eventName };
   }
+  
 }
 
 export default function ActivityFeed({ potAddress }) {
